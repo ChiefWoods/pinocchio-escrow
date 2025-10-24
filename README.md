@@ -1,6 +1,6 @@
 # Pinocchio Escrow
 
-Escrow for [Blueshift](https://blueshift.gg/).
+Escrow for [Blueshift](https://blueshift.gg/) and [Turbin3 Accelerated Builders Cohort](https://turbin3.org/).
 
 [Source Repository](https://github.com/ChiefWoods/pinocchio-escrow)
 
@@ -9,13 +9,6 @@ Escrow for [Blueshift](https://blueshift.gg/).
 ### Languages
 
 - [![Rust](https://img.shields.io/badge/Rust-f75008?style=for-the-badge&logo=rust)](https://www.rust-lang.org/)
-
-### Crates
-
-- [pinocchio](https://docs.rs/pinocchio)
-- [pinocchio-associated-token-account](https://docs.rs/pinocchio-associated-token-account)
-- [pinocchio-system](https://docs.rs/pinocchio-system)
-- [pinocchio-token](https://docs.rs/pinocchio-token)
 
 ## Getting Started
 
