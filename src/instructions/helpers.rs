@@ -10,10 +10,10 @@ use pinocchio_associated_token_account::instructions::Create;
 use pinocchio_system::instructions::CreateAccount;
 use pinocchio_token::{
     instructions::{InitializeAccount3, InitializeMint2},
-    state::Mint,
+    state::{Mint, TokenAccount as TokenAccountState},
 };
 
-use crate::PinocchioError;
+use crate::{Escrow, PinocchioError};
 
 pub trait AccountCheck {
     fn check(account: &AccountInfo) -> Result<(), ProgramError>;
@@ -34,7 +34,7 @@ pub struct SystemAccount;
 
 impl AccountCheck for SystemAccount {
     fn check(account: &AccountInfo) -> Result<(), ProgramError> {
-        if unsafe { account.owner().ne(&pinocchio_system::ID) } {
+        if account.owner().ne(&pinocchio_system::ID) {
             return Err(ProgramError::InvalidAccountOwner.into());
         }
 
@@ -46,7 +46,7 @@ pub struct MintAccount;
 
 impl AccountCheck for MintAccount {
     fn check(account: &AccountInfo) -> Result<(), ProgramError> {
-        if unsafe { account.owner().ne(&pinocchio_token::ID) } {
+        if account.owner().ne(&pinocchio_token::ID) {
             return Err(ProgramError::InvalidAccountOwner.into());
         }
 
@@ -89,7 +89,7 @@ impl MintInit for MintAccount {
             from: payer,
             to: account,
             lamports,
-            space: pinocchio_token::state::Mint::LEN as u64,
+            space: Mint::LEN as u64,
             owner: &pinocchio_token::ID,
         }
         .invoke()?;
@@ -121,13 +121,13 @@ pub struct TokenAccount;
 
 impl AccountCheck for TokenAccount {
     fn check(account: &AccountInfo) -> Result<(), ProgramError> {
-        if unsafe { account.owner().ne(&pinocchio_token::ID) } {
+        if account.owner().ne(&pinocchio_token::ID) {
             return Err(ProgramError::InvalidAccountOwner.into());
         }
 
         if account
             .data_len()
-            .ne(&pinocchio_token::state::TokenAccount::LEN)
+            .ne(&TokenAccountState::LEN)
         {
             return Err(ProgramError::InvalidAccountData.into());
         }
@@ -158,13 +158,13 @@ impl TokenInit for TokenAccount {
         payer: &AccountInfo,
         owner: &[u8; 32],
     ) -> ProgramResult {
-        let lamports = Rent::get()?.minimum_balance(pinocchio_token::state::TokenAccount::LEN);
+        let lamports = Rent::get()?.minimum_balance(TokenAccountState::LEN);
 
         CreateAccount {
             from: payer,
             to: account,
             lamports,
-            space: pinocchio_token::state::TokenAccount::LEN as u64,
+            space: TokenAccountState::LEN as u64,
             owner: &pinocchio_token::ID,
         }
         .invoke()?;
@@ -205,13 +205,13 @@ pub struct Mint2022Account;
 
 impl AccountCheck for Mint2022Account {
     fn check(account: &AccountInfo) -> Result<(), ProgramError> {
-        if unsafe { account.owner().ne(&TOKEN_2022_PROGRAM_ID) } {
+        if account.owner().ne(&TOKEN_2022_PROGRAM_ID) {
             return Err(ProgramError::InvalidAccountOwner.into());
         }
 
         let data = account.try_borrow_data()?;
 
-        if data.len().ne(&pinocchio_token::state::Mint::LEN) {
+        if data.len().ne(&Mint::LEN) {
             if data[TOKEN_2022_ACCOUNT_DISCRIMINATOR_OFFSET].ne(&TOKEN_2022_MINT_DISCRIMINATOR) {
                 return Err(ProgramError::InvalidAccountData.into());
             }
@@ -229,13 +229,13 @@ impl MintInit for Mint2022Account {
         mint_authority: &[u8; 32],
         freeze_authority: Option<&[u8; 32]>,
     ) -> ProgramResult {
-        let lamports = Rent::get()?.minimum_balance(pinocchio_token::state::Mint::LEN);
+        let lamports = Rent::get()?.minimum_balance(Mint::LEN);
 
         CreateAccount {
             from: payer,
             to: account,
             lamports,
-            space: pinocchio_token::state::Mint::LEN as u64,
+            space: Mint::LEN as u64,
             owner: &TOKEN_2022_PROGRAM_ID,
         }
         .invoke()?;
@@ -266,13 +266,13 @@ pub struct TokenAccount2022Account;
 
 impl AccountCheck for TokenAccount2022Account {
     fn check(account: &AccountInfo) -> Result<(), ProgramError> {
-        if unsafe { account.owner().ne(&TOKEN_2022_PROGRAM_ID) } {
+        if account.owner().ne(&TOKEN_2022_PROGRAM_ID) {
             return Err(ProgramError::InvalidAccountOwner.into());
         }
 
         let data = account.try_borrow_data()?;
 
-        if data.len().ne(&pinocchio_token::state::TokenAccount::LEN) {
+        if data.len().ne(&TokenAccountState::LEN) {
             if data[TOKEN_2022_ACCOUNT_DISCRIMINATOR_OFFSET]
                 .ne(&TOKEN_2022_TOKEN_ACCOUNT_DISCRIMINATOR)
             {
@@ -291,13 +291,13 @@ impl TokenInit for TokenAccount2022Account {
         payer: &AccountInfo,
         owner: &[u8; 32],
     ) -> ProgramResult {
-        let lamports = Rent::get()?.minimum_balance(pinocchio_token::state::TokenAccount::LEN);
+        let lamports = Rent::get()?.minimum_balance(TokenAccountState::LEN);
 
         CreateAccount {
             from: payer,
             to: account,
             lamports,
-            space: pinocchio_token::state::TokenAccount::LEN as u64,
+            space: TokenAccountState::LEN as u64,
             owner: &TOKEN_2022_PROGRAM_ID,
         }
         .invoke()?;
@@ -327,18 +327,18 @@ pub struct MintInterface;
 
 impl AccountCheck for MintInterface {
     fn check(account: &AccountInfo) -> Result<(), ProgramError> {
-        if unsafe { account.owner().ne(&TOKEN_2022_PROGRAM_ID) } {
-            if unsafe { account.owner().ne(&pinocchio_token::ID) } {
+        if account.owner().ne(&TOKEN_2022_PROGRAM_ID) {
+            if account.owner().ne(&pinocchio_token::ID) {
                 return Err(ProgramError::InvalidAccountOwner.into());
             } else {
-                if account.data_len().ne(&pinocchio_token::state::Mint::LEN) {
+                if account.data_len().ne(&Mint::LEN) {
                     return Err(ProgramError::InvalidAccountData.into());
                 }
             }
         } else {
             let data = account.try_borrow_data()?;
 
-            if data.len().ne(&pinocchio_token::state::Mint::LEN) {
+            if data.len().ne(&Mint::LEN) {
                 if data[TOKEN_2022_ACCOUNT_DISCRIMINATOR_OFFSET].ne(&TOKEN_2022_MINT_DISCRIMINATOR)
                 {
                     return Err(ProgramError::InvalidAccountData.into());
@@ -354,13 +354,13 @@ pub struct TokenAccountInterface;
 
 impl AccountCheck for TokenAccountInterface {
     fn check(account: &AccountInfo) -> Result<(), ProgramError> {
-        if unsafe { account.owner().ne(&TOKEN_2022_PROGRAM_ID) } {
-            if unsafe { account.owner().ne(&pinocchio_token::ID) } {
+        if account.owner().ne(&TOKEN_2022_PROGRAM_ID) {
+            if account.owner().ne(&pinocchio_token::ID) {
                 return Err(ProgramError::InvalidAccountOwner.into());
             } else {
                 if account
                     .data_len()
-                    .ne(&pinocchio_token::state::TokenAccount::LEN)
+                    .ne(&TokenAccountState::LEN)
                 {
                     return Err(ProgramError::InvalidAccountData.into());
                 }
@@ -368,7 +368,7 @@ impl AccountCheck for TokenAccountInterface {
         } else {
             let data = account.try_borrow_data()?;
 
-            if data.len().ne(&pinocchio_token::state::TokenAccount::LEN) {
+            if data.len().ne(&TokenAccountState::LEN) {
                 return Err(ProgramError::InvalidAccountData.into());
             }
         }
@@ -468,11 +468,11 @@ pub struct ProgramAccount;
 
 impl AccountCheck for ProgramAccount {
     fn check(account: &AccountInfo) -> Result<(), ProgramError> {
-        if unsafe { account.owner().ne(&crate::ID) } {
+        if account.owner().ne(&crate::ID) {
             return Err(ProgramError::InvalidAccountOwner.into());
         }
 
-        if account.data_len().ne(&crate::state::Escrow::LEN) {
+        if account.data_len().ne(&Escrow::LEN) {
             return Err(ProgramError::InvalidAccountData.into());
         }
 
@@ -525,7 +525,7 @@ impl AccountClose for ProgramAccount {
         }
 
         *destination.try_borrow_mut_lamports()? += *account.try_borrow_lamports()?;
-        account.realloc(1, true)?;
+        account.resize(1)?;
         account.close()
     }
 }
