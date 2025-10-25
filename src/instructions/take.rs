@@ -181,3 +181,119 @@ impl<'a> Take<'a> {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use solana_instruction::{AccountMeta, Instruction};
+    use solana_signer::Signer;
+    use spl_associated_token_account::{
+        get_associated_token_address_with_program_id,
+        solana_program::native_token::LAMPORTS_PER_SOL,
+    };
+    use spl_token_2022::state::Account as TokenAccount;
+
+    use crate::tests::{
+        constants::{
+            ASSOCIATED_TOKEN_PROGRAM_ID, MINT_DECIMALS, PROGRAM_ID, SYSTEM_PROGRAM_ID,
+            TOKEN_PROGRAM_ID,
+        },
+        pda::get_escrow_pda,
+        utils::{
+            build_and_send_transaction, fetch_account, init_ata, init_mint, init_wallet, setup,
+        },
+    };
+
+    #[test]
+    fn take() {
+        let (litesvm, _default_payer) = &mut setup();
+
+        let maker = init_wallet(litesvm, LAMPORTS_PER_SOL);
+        let taker = init_wallet(litesvm, LAMPORTS_PER_SOL);
+        let mint_a = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000);
+        let mint_b = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000);
+        let maker_ata_a = init_ata(litesvm, mint_a, maker.pubkey(), 1_000_000_000);
+        let taker_ata_b = init_ata(litesvm, mint_b, taker.pubkey(), 1_000_000_000);
+
+        let seed = 42u64;
+        let receive_amount: u64 = 100_000_000;
+        let give_amount: u64 = 500_000_000;
+
+        let escrow_pda = get_escrow_pda(&maker.pubkey(), seed);
+        let vault = get_associated_token_address_with_program_id(&escrow_pda, &mint_a, &TOKEN_PROGRAM_ID);
+
+        let ix = Instruction {
+            program_id: PROGRAM_ID,
+            accounts: vec![
+                AccountMeta::new(maker.pubkey(), true),
+                AccountMeta::new(escrow_pda, false),
+                AccountMeta::new_readonly(mint_a, false),
+                AccountMeta::new_readonly(mint_b, false),
+                AccountMeta::new(maker_ata_a, false),
+                AccountMeta::new(vault, false),
+                AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
+                AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
+                AccountMeta::new_readonly(ASSOCIATED_TOKEN_PROGRAM_ID, false),
+            ],
+            data: [
+                vec![0u8],
+                seed.to_le_bytes().to_vec(),
+                receive_amount.to_le_bytes().to_vec(),
+                give_amount.to_le_bytes().to_vec(),
+            ]
+            .concat(),
+        };
+
+        let _ = build_and_send_transaction(litesvm, &[&maker], &maker.pubkey(), &[ix]);
+
+        let taker_ata_a = get_associated_token_address_with_program_id(
+            &taker.pubkey(),
+            &mint_a,
+            &TOKEN_PROGRAM_ID,
+        );
+        let maker_ata_b = get_associated_token_address_with_program_id(
+            &maker.pubkey(),
+            &mint_b,
+            &TOKEN_PROGRAM_ID,
+        );
+
+        let pre_maker_ata_b_bal = 0;
+        let pre_taker_ata_a_bal = 0;
+
+        let ix = Instruction {
+            program_id: PROGRAM_ID,
+            accounts: vec![
+                AccountMeta::new(taker.pubkey(), true),
+                AccountMeta::new(maker.pubkey(), false),
+                AccountMeta::new(escrow_pda, false),
+                AccountMeta::new_readonly(mint_a, false),
+                AccountMeta::new_readonly(mint_b, false),
+                AccountMeta::new(vault, false),
+                AccountMeta::new(taker_ata_a, false),
+                AccountMeta::new(taker_ata_b, false),
+                AccountMeta::new(maker_ata_b, false),
+                AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
+                AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
+                AccountMeta::new_readonly(ASSOCIATED_TOKEN_PROGRAM_ID, false),
+            ],
+            data: [vec![1u8]].concat(),
+        };
+
+        let _ = build_and_send_transaction(litesvm, &[&taker], &taker.pubkey(), &[ix]);
+
+        let escrow_acc = litesvm.get_account(&escrow_pda);
+
+        assert!(escrow_acc.is_none());
+
+        let vault_acc = litesvm.get_account(&vault);
+
+        assert!(vault_acc.is_none());
+
+        let post_maker_ata_b_bal = fetch_account::<TokenAccount>(litesvm, &maker_ata_b).amount;
+
+        assert_eq!(pre_maker_ata_b_bal, post_maker_ata_b_bal - receive_amount);
+
+        let post_taker_ata_a_bal = fetch_account::<TokenAccount>(litesvm, &taker_ata_a).amount;
+
+        assert_eq!(pre_taker_ata_a_bal, post_taker_ata_a_bal - give_amount);
+    }
+}

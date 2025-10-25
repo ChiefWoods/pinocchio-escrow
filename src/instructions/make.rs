@@ -1,7 +1,6 @@
 use core::mem::size_of;
 use pinocchio::{
-    ProgramResult, account_info::AccountInfo, instruction::Seed, program_error::ProgramError,
-    pubkey::find_program_address,
+    account_info::AccountInfo, instruction::Seed, program_error::ProgramError, pubkey::find_program_address, ProgramResult
 };
 use pinocchio_token::instructions::Transfer;
 
@@ -177,5 +176,83 @@ impl<'a> Make<'a> {
         .invoke()?;
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use solana_instruction::{AccountMeta, Instruction};
+    use solana_signer::Signer;
+    use spl_associated_token_account::{
+        get_associated_token_address_with_program_id, solana_program::native_token::LAMPORTS_PER_SOL
+    };
+
+    use crate::{tests::{
+        constants::{
+            ASSOCIATED_TOKEN_PROGRAM_ID, MINT_DECIMALS, PROGRAM_ID, SYSTEM_PROGRAM_ID,
+            TOKEN_PROGRAM_ID,
+        },
+        pda::get_escrow_pda,
+        utils::{build_and_send_transaction, init_ata, init_mint, init_wallet, setup},
+    }, Escrow};
+
+    #[test]
+    fn make() {
+        let (litesvm, _default_payer) = &mut setup();
+
+        let maker = init_wallet(litesvm, LAMPORTS_PER_SOL);
+        let mint_a = init_mint(
+            litesvm,
+            TOKEN_PROGRAM_ID,
+            MINT_DECIMALS,
+            1_000_000_000,
+        );
+        let mint_b = init_mint(
+            litesvm,
+            TOKEN_PROGRAM_ID,
+            MINT_DECIMALS,
+            1_000_000_000,
+        );
+        let maker_ata_a = init_ata(litesvm, mint_a, maker.pubkey(), 1_000_000_000);
+        
+        let seed = 42u64;
+        let receive_amount: u64 = 100_000_000;
+        let give_amount: u64 = 500_000_000;
+        let escrow_pda = get_escrow_pda(&maker.pubkey(), seed);
+        let vault = get_associated_token_address_with_program_id(&escrow_pda, &mint_a, &TOKEN_PROGRAM_ID);
+        
+        let data = [
+            vec![0u8],
+            seed.to_le_bytes().to_vec(),
+            receive_amount.to_le_bytes().to_vec(),
+            give_amount.to_le_bytes().to_vec(),
+        ]
+        .concat();
+        let ix = Instruction {
+            program_id: PROGRAM_ID,
+            accounts: vec![
+                AccountMeta::new(maker.pubkey(), true),
+                AccountMeta::new(escrow_pda, false),
+                AccountMeta::new_readonly(mint_a, false),
+                AccountMeta::new_readonly(mint_b, false),
+                AccountMeta::new(maker_ata_a, false),
+                AccountMeta::new(vault, false),
+                AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
+                AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
+                AccountMeta::new_readonly(ASSOCIATED_TOKEN_PROGRAM_ID, false),
+            ],
+            data,
+        };
+
+        let _ = build_and_send_transaction(litesvm, &[&maker], &maker.pubkey(), &[ix]);
+
+        let escrow_acc = litesvm.get_account(&escrow_pda).unwrap();
+        let escrow = Escrow::load(escrow_acc.data.as_ref()).unwrap();
+
+        assert_eq!(escrow.seed, seed);
+        assert_eq!(escrow.maker, maker.pubkey().to_bytes());
+        assert_eq!(escrow.mint_a, mint_a.to_bytes());
+        assert_eq!(escrow.mint_b, mint_b.to_bytes());
+        assert_eq!(escrow.receive, receive_amount);
     }
 }
