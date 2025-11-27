@@ -1,6 +1,6 @@
 use litesvm::{
     LiteSVM,
-    types::{FailedTransactionMetadata, TransactionResult},
+    types::{TransactionResult},
 };
 use solana_account::Account;
 use solana_instruction::Instruction;
@@ -55,10 +55,6 @@ pub fn build_and_send_transaction(
         litesvm.latest_blockhash(),
     );
     litesvm.send_transaction(tx)
-}
-
-pub fn assert_error(tx_meta: FailedTransactionMetadata, error: &str) {
-    assert!(tx_meta.meta.pretty_logs().contains(&error.to_string()));
 }
 
 pub fn init_wallet(litesvm: &mut LiteSVM, lamports: u64) -> Keypair {
