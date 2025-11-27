@@ -219,7 +219,8 @@ mod tests {
         let give_amount: u64 = 500_000_000;
 
         let escrow_pda = get_escrow_pda(&maker.pubkey(), seed);
-        let vault = get_associated_token_address_with_program_id(&escrow_pda, &mint_a, &TOKEN_PROGRAM_ID);
+        let vault =
+            get_associated_token_address_with_program_id(&escrow_pda, &mint_a, &TOKEN_PROGRAM_ID);
 
         let ix = Instruction {
             program_id: PROGRAM_ID,

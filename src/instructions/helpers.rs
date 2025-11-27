@@ -35,7 +35,7 @@ pub struct SystemAccount;
 impl AccountCheck for SystemAccount {
     fn check(account: &AccountInfo) -> Result<(), ProgramError> {
         if account.owner().ne(&pinocchio_system::ID) {
-            return Err(ProgramError::InvalidAccountOwner.into());
+            return Err(ProgramError::InvalidAccountOwner);
         }
 
         Ok(())
@@ -47,11 +47,11 @@ pub struct MintAccount;
 impl AccountCheck for MintAccount {
     fn check(account: &AccountInfo) -> Result<(), ProgramError> {
         if account.owner().ne(&pinocchio_token::ID) {
-            return Err(ProgramError::InvalidAccountOwner.into());
+            return Err(ProgramError::InvalidAccountOwner);
         }
 
         if account.data_len() != Mint::LEN {
-            return Err(ProgramError::InvalidAccountData.into());
+            return Err(ProgramError::InvalidAccountData);
         }
 
         Ok(())
@@ -122,14 +122,11 @@ pub struct TokenAccount;
 impl AccountCheck for TokenAccount {
     fn check(account: &AccountInfo) -> Result<(), ProgramError> {
         if account.owner().ne(&pinocchio_token::ID) {
-            return Err(ProgramError::InvalidAccountOwner.into());
+            return Err(ProgramError::InvalidAccountOwner);
         }
 
-        if account
-            .data_len()
-            .ne(&TokenAccountState::LEN)
-        {
-            return Err(ProgramError::InvalidAccountData.into());
+        if account.data_len().ne(&TokenAccountState::LEN) {
+            return Err(ProgramError::InvalidAccountData);
         }
 
         Ok(())
@@ -206,15 +203,15 @@ pub struct Mint2022Account;
 impl AccountCheck for Mint2022Account {
     fn check(account: &AccountInfo) -> Result<(), ProgramError> {
         if account.owner().ne(&TOKEN_2022_PROGRAM_ID) {
-            return Err(ProgramError::InvalidAccountOwner.into());
+            return Err(ProgramError::InvalidAccountOwner);
         }
 
         let data = account.try_borrow_data()?;
 
-        if data.len().ne(&Mint::LEN) {
-            if data[TOKEN_2022_ACCOUNT_DISCRIMINATOR_OFFSET].ne(&TOKEN_2022_MINT_DISCRIMINATOR) {
-                return Err(ProgramError::InvalidAccountData.into());
-            }
+        if data.len().ne(&Mint::LEN)
+            && data[TOKEN_2022_ACCOUNT_DISCRIMINATOR_OFFSET].ne(&TOKEN_2022_MINT_DISCRIMINATOR)
+        {
+            return Err(ProgramError::InvalidAccountData);
         }
 
         Ok(())
@@ -267,17 +264,16 @@ pub struct TokenAccount2022Account;
 impl AccountCheck for TokenAccount2022Account {
     fn check(account: &AccountInfo) -> Result<(), ProgramError> {
         if account.owner().ne(&TOKEN_2022_PROGRAM_ID) {
-            return Err(ProgramError::InvalidAccountOwner.into());
+            return Err(ProgramError::InvalidAccountOwner);
         }
 
         let data = account.try_borrow_data()?;
 
-        if data.len().ne(&TokenAccountState::LEN) {
-            if data[TOKEN_2022_ACCOUNT_DISCRIMINATOR_OFFSET]
+        if data.len().ne(&TokenAccountState::LEN)
+            && data[TOKEN_2022_ACCOUNT_DISCRIMINATOR_OFFSET]
                 .ne(&TOKEN_2022_TOKEN_ACCOUNT_DISCRIMINATOR)
-            {
-                return Err(ProgramError::InvalidAccountData.into());
-            }
+        {
+            return Err(ProgramError::InvalidAccountData);
         }
 
         Ok(())
@@ -329,20 +325,17 @@ impl AccountCheck for MintInterface {
     fn check(account: &AccountInfo) -> Result<(), ProgramError> {
         if account.owner().ne(&TOKEN_2022_PROGRAM_ID) {
             if account.owner().ne(&pinocchio_token::ID) {
-                return Err(ProgramError::InvalidAccountOwner.into());
-            } else {
-                if account.data_len().ne(&Mint::LEN) {
-                    return Err(ProgramError::InvalidAccountData.into());
-                }
+                return Err(ProgramError::InvalidAccountOwner);
+            } else if account.data_len().ne(&Mint::LEN) {
+                return Err(ProgramError::InvalidAccountData);
             }
         } else {
             let data = account.try_borrow_data()?;
 
-            if data.len().ne(&Mint::LEN) {
-                if data[TOKEN_2022_ACCOUNT_DISCRIMINATOR_OFFSET].ne(&TOKEN_2022_MINT_DISCRIMINATOR)
-                {
-                    return Err(ProgramError::InvalidAccountData.into());
-                }
+            if data.len().ne(&Mint::LEN)
+                && data[TOKEN_2022_ACCOUNT_DISCRIMINATOR_OFFSET].ne(&TOKEN_2022_MINT_DISCRIMINATOR)
+            {
+                return Err(ProgramError::InvalidAccountData);
             }
         }
 
@@ -356,20 +349,15 @@ impl AccountCheck for TokenAccountInterface {
     fn check(account: &AccountInfo) -> Result<(), ProgramError> {
         if account.owner().ne(&TOKEN_2022_PROGRAM_ID) {
             if account.owner().ne(&pinocchio_token::ID) {
-                return Err(ProgramError::InvalidAccountOwner.into());
-            } else {
-                if account
-                    .data_len()
-                    .ne(&TokenAccountState::LEN)
-                {
-                    return Err(ProgramError::InvalidAccountData.into());
-                }
+                return Err(ProgramError::InvalidAccountOwner);
+            } else if account.data_len().ne(&TokenAccountState::LEN) {
+                return Err(ProgramError::InvalidAccountData);
             }
         } else {
             let data = account.try_borrow_data()?;
 
             if data.len().ne(&TokenAccountState::LEN) {
-                return Err(ProgramError::InvalidAccountData.into());
+                return Err(ProgramError::InvalidAccountData);
             }
         }
 
@@ -469,11 +457,11 @@ pub struct ProgramAccount;
 impl AccountCheck for ProgramAccount {
     fn check(account: &AccountInfo) -> Result<(), ProgramError> {
         if account.owner().ne(&crate::ID) {
-            return Err(ProgramError::InvalidAccountOwner.into());
+            return Err(ProgramError::InvalidAccountOwner);
         }
 
         if account.data_len().ne(&Escrow::LEN) {
-            return Err(ProgramError::InvalidAccountData.into());
+            return Err(ProgramError::InvalidAccountData);
         }
 
         Ok(())

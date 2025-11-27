@@ -1,6 +1,7 @@
 use core::mem::size_of;
 use pinocchio::{
-    account_info::AccountInfo, instruction::Seed, program_error::ProgramError, pubkey::find_program_address, ProgramResult
+    ProgramResult, account_info::AccountInfo, instruction::Seed, program_error::ProgramError,
+    pubkey::find_program_address,
 };
 use pinocchio_token::instructions::Transfer;
 
@@ -184,43 +185,38 @@ mod tests {
     use solana_instruction::{AccountMeta, Instruction};
     use solana_signer::Signer;
     use spl_associated_token_account::{
-        get_associated_token_address_with_program_id, solana_program::native_token::LAMPORTS_PER_SOL
+        get_associated_token_address_with_program_id,
+        solana_program::native_token::LAMPORTS_PER_SOL,
     };
 
-    use crate::{tests::{
-        constants::{
-            ASSOCIATED_TOKEN_PROGRAM_ID, MINT_DECIMALS, PROGRAM_ID, SYSTEM_PROGRAM_ID,
-            TOKEN_PROGRAM_ID,
+    use crate::{
+        Escrow,
+        tests::{
+            constants::{
+                ASSOCIATED_TOKEN_PROGRAM_ID, MINT_DECIMALS, PROGRAM_ID, SYSTEM_PROGRAM_ID,
+                TOKEN_PROGRAM_ID,
+            },
+            pda::get_escrow_pda,
+            utils::{build_and_send_transaction, init_ata, init_mint, init_wallet, setup},
         },
-        pda::get_escrow_pda,
-        utils::{build_and_send_transaction, init_ata, init_mint, init_wallet, setup},
-    }, Escrow};
+    };
 
     #[test]
     fn make() {
         let (litesvm, _default_payer) = &mut setup();
 
         let maker = init_wallet(litesvm, LAMPORTS_PER_SOL);
-        let mint_a = init_mint(
-            litesvm,
-            TOKEN_PROGRAM_ID,
-            MINT_DECIMALS,
-            1_000_000_000,
-        );
-        let mint_b = init_mint(
-            litesvm,
-            TOKEN_PROGRAM_ID,
-            MINT_DECIMALS,
-            1_000_000_000,
-        );
+        let mint_a = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000);
+        let mint_b = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000);
         let maker_ata_a = init_ata(litesvm, mint_a, maker.pubkey(), 1_000_000_000);
-        
+
         let seed = 42u64;
         let receive_amount: u64 = 100_000_000;
         let give_amount: u64 = 500_000_000;
         let escrow_pda = get_escrow_pda(&maker.pubkey(), seed);
-        let vault = get_associated_token_address_with_program_id(&escrow_pda, &mint_a, &TOKEN_PROGRAM_ID);
-        
+        let vault =
+            get_associated_token_address_with_program_id(&escrow_pda, &mint_a, &TOKEN_PROGRAM_ID);
+
         let data = [
             vec![0u8],
             seed.to_le_bytes().to_vec(),

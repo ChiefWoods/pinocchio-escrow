@@ -1,7 +1,4 @@
-use litesvm::{
-    LiteSVM,
-    types::{TransactionResult},
-};
+use litesvm::{LiteSVM, types::TransactionResult};
 use solana_account::Account;
 use solana_instruction::Instruction;
 use solana_keypair::Keypair;
@@ -11,7 +8,10 @@ use solana_signer::Signer;
 use solana_transaction::Transaction;
 use spl_associated_token_account::{
     get_associated_token_address,
-    solana_program::{native_token::LAMPORTS_PER_SOL, program_pack::{IsInitialized, Pack}},
+    solana_program::{
+        native_token::LAMPORTS_PER_SOL,
+        program_pack::{IsInitialized, Pack},
+    },
 };
 use spl_token_2022::state::{Account as TokenAccount, AccountState, Mint};
 
